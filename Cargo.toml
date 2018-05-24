@@ -6,8 +6,7 @@ authors = ["Olaf Leidinger <oleid@mescharet.de>"]
 [dependencies]
 failure = "0.1"
 futures = "0.1"
-hyper = "0.11"
-hyper-tls = "0.1"
+
 jfs =  { path = "jfs" }
 keyring = "0.6.0"
 log = "0.4"

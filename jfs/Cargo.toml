@@ -4,9 +4,12 @@ version = "0.1.0"
 authors = ["Olaf Leidinger <olaf.leidinger@indurad.com"]
 
 [dependencies]
+base64 = "0.9"
 chrono = "0.4"
 failure = "0.1"
 futures = "0.1"
+hyper = "0.12"
+hyper-tls = "0.2"
 log = "0.4"
 mime = "0.3"
 pretty_env_logger = "0.2"

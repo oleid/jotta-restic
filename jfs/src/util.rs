@@ -1,12 +1,11 @@
 use chrono::ParseError as ChronoParseError;
 use chrono::{format, format::Item, DateTime, Utc};
-
+use error::JfsXmlError;
 use failure::Error;
-
+use fromxml::FromXml;
 use mime::Mime;
 use quick_xml::events::Event;
 use quick_xml::Reader;
-
 use std::io::BufRead;
 use std::str::FromStr;
 
@@ -116,6 +115,7 @@ where
 
     Ok(content)
 }
+/////////////////////////////////////////////////////////////////////////////////
 
 pub fn element_text<R: BufRead>(reader: &mut Reader<R>) -> Result<Option<String>, Error> {
     element_generic(reader, |v| Ok(v.to_owned()))
@@ -137,6 +137,38 @@ pub fn element_transfer_state<R: BufRead>(
     reader: &mut Reader<R>,
 ) -> Result<Option<TransferState>, Error> {
     element_generic(reader, |v| Ok(v.parse::<TransferState>()?))
+}
+
+pub fn parse_list<R: BufRead, E: FromXml>(
+    reader: &mut Reader<R>,
+    tag_name: &[u8],
+) -> Result<Vec<E>, Error> {
+    use std::str::from_utf8;
+
+    let mut vec = Vec::new();
+    let mut buf = Vec::new();
+
+    loop {
+        match reader.read_event(&mut buf)? {
+            Event::Start(element) => {
+                debug!("New element: {}", from_utf8(element.name())?);
+                vec.push(E::from_xml(reader, element.attributes())?);
+            }
+            Event::End(element) => if element.name() != tag_name {
+                debug!("Closing element {}, continue", from_utf8(element.name())?);
+                continue;
+            } else {
+                debug!("Closing element, we're done here.");
+                break;
+            },
+            Event::Eof => return Err(JfsXmlError::UnexpectedEndOfFile.into()),
+            _ => {}
+        }
+
+        buf.clear();
+    }
+
+    Ok(vec)
 }
 
 #[test]
