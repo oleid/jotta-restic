@@ -1,11 +1,11 @@
-use error::JfsXmlError;
+use crate::error::JfsXmlError;
 use failure::Error;
-use fromxml::FromXml;
+use crate::fromxml::FromXml;
 use quick_xml::events::{attributes::Attributes, Event};
 use quick_xml::Reader;
 use std::io::BufRead;
 use std::str::FromStr;
-use util::*;
+use crate::util::*;
 
 #[derive(Default, Debug)]
 pub struct JottaError {

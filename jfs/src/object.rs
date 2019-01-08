@@ -1,8 +1,8 @@
-use error::JfsXmlError;
+use crate::error::JfsXmlError;
 use failure::Error;
-use file::File;
-use folder::Folder;
-use fromxml::FromXml;
+use crate::file::File;
+use crate::folder::Folder;
+use crate::fromxml::FromXml;
 use quick_xml::events::Event;
 use quick_xml::Reader;
 use std::str::FromStr;

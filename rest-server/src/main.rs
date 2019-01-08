@@ -8,18 +8,8 @@
 //!
 //! Note that there's also the `hyper-tls` crate which may be useful.
 
-extern crate failure;
-extern crate futures;
-
-extern crate keyring;
-extern crate mime;
-extern crate pretty_env_logger;
-extern crate quick_xml;
-extern crate rpassword;
-extern crate tokio_core;
 #[macro_use]
 extern crate log;
-extern crate jfs;
 
 use futures::future::{ok, Future};
 

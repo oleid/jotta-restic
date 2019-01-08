@@ -1,14 +1,6 @@
-extern crate base64;
-extern crate chrono;
-
 #[macro_use]
 extern crate failure;
-extern crate futures;
-extern crate hyper;
-extern crate hyper_tls;
-extern crate mime;
-extern crate pretty_env_logger;
-extern crate quick_xml;
+
 #[macro_use]
 extern crate log;
 
@@ -20,11 +12,11 @@ mod fromxml;
 mod object;
 mod util;
 
-pub use auth_error::JottaError;
-pub use file::File;
-pub use folder::Folder;
-pub use fromxml::FromXml;
-pub use object::Object;
+pub use crate::auth_error::JottaError;
+pub use crate::file::File;
+pub use crate::folder::Folder;
+pub use crate::fromxml::FromXml;
+pub use crate::object::Object;
 
 use failure::{err_msg, Error};
 use futures::{future::{err, ok},

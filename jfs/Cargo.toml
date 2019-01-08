@@ -1,7 +1,8 @@
 [package]
 name = "jfs"
 version = "0.1.0"
-authors = ["Olaf Leidinger <olaf.leidinger@indurad.com"]
+authors = ["Olaf Leidinger <oleid@mescharet.de>"]
+edition = "2018"
 
 [dependencies]
 base64 = "0.9"

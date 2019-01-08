@@ -2,6 +2,7 @@
 name = "jottaclient"
 version = "0.1.0"
 authors = ["Olaf Leidinger <oleid@mescharet.de>"]
+edition = "2018"
 
 [dependencies]
 failure = "0.1"

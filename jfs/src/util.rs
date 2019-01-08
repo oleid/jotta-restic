@@ -1,8 +1,8 @@
 use chrono::ParseError as ChronoParseError;
 use chrono::{format, format::Item, DateTime, Utc};
-use error::JfsXmlError;
+use crate::error::JfsXmlError;
 use failure::Error;
-use fromxml::FromXml;
+use crate::fromxml::FromXml;
 use mime::Mime;
 use quick_xml::events::Event;
 use quick_xml::Reader;
