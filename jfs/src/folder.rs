@@ -1,25 +1,27 @@
 use crate::error::JfsXmlError;
-use failure::Error;
 use crate::file::File;
 use crate::fromxml::FromXml;
+use crate::util::*;
+use failure::Error;
 use quick_xml::events::{attributes::Attributes, Event};
 use quick_xml::Reader;
 use std::io::BufRead;
 use std::str::FromStr;
-use crate::util::*;
 
 #[derive(Default, Debug)]
 pub struct Folder {
-    name: String,
-    request_time: Option<TimeStamp>,
-    deleted: Option<TimeStamp>,
+    pub name: String,
+    pub request_time: Option<TimeStamp>,
+    pub deleted: Option<TimeStamp>,
     //path: String,
-    abspath: Option<String>, // sometimes available, i.e. in subfolders
-    files: Vec<File>,
-    folders: Vec<Folder>,
+    pub abspath: Option<String>, // sometimes available, i.e. in subfolders
+    pub files: Vec<File>,
+    pub folders: Vec<Folder>,
 }
 
 impl FromXml for Folder {
+    const TAG: &'static str = "folder";
+
     fn from_xml<R: BufRead>(reader: &mut Reader<R>, attrs: Attributes) -> Result<Self, Error> {
         use std::str::from_utf8;
 
@@ -49,20 +51,23 @@ impl FromXml for Folder {
                         n => {
                             return Err(JfsXmlError::UnexpectedTag {
                                 tag: from_utf8(n)?.to_owned(),
-                            }.into())
+                            }
+                            .into());
                         }
                     }
                 }
-                Event::End(element) => if element.name() != b"folder" {
-                    debug!(
-                        "Closing element {}, continue",
-                        from_utf8(element.name()).unwrap()
-                    );
-                    continue;
-                } else {
-                    debug!("Closing element folder, we're done here.");
-                    break;
-                },
+                Event::End(element) => {
+                    if element.name() != b"folder" {
+                        debug!(
+                            "Closing element {}, continue",
+                            from_utf8(element.name()).unwrap()
+                        );
+                        continue;
+                    } else {
+                        debug!("Closing element folder, we're done here.");
+                        break;
+                    }
+                }
                 Event::Eof => return Err(JfsXmlError::UnexpectedEndOfFile.into()),
                 _ => {}
             }
@@ -74,40 +79,7 @@ impl FromXml for Folder {
     }
 }
 
-impl FromStr for Folder {
-    type Err = Error;
-
-    #[inline]
-    fn from_str(s: &str) -> Result<Folder, Error> {
-        use std::str::from_utf8;
-
-        let mut buf = Vec::new();
-        let mut reader = Reader::from_str(s);
-        reader.trim_text(true).expand_empty_elements(true);
-
-        loop {
-            match reader.read_event(&mut buf)? {
-                Event::Start(element) => if element.name() == b"folder" {
-                    debug!("Found folder tag with attrib, parsing folder");
-                    debug!(
-                        "attributes values: {:?}",
-                        element
-                            .attributes()
-                            .map(|a| from_utf8(&a.unwrap().value).unwrap().to_owned())
-                            .collect::<Vec<_>>()
-                    );
-                    return Folder::from_xml(&mut reader, element.attributes());
-                } else {
-                    debug!("Some other tag, will continue");
-                    continue;
-                },
-                Event::End(_) => return Err(JfsXmlError::UnexpectedEndOfFile.into()),
-                Event::Eof => return Err(JfsXmlError::UnexpectedEndOfFile.into()),
-                _ => {}
-            }
-        }
-    }
-}
+impl_from_str!(Folder);
 
 #[test]
 fn test_from_str() {

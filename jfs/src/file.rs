@@ -1,32 +1,34 @@
 use crate::error::JfsXmlError;
+use crate::fromxml::*;
+use crate::util::*;
 use failure::Error;
-use crate::fromxml::FromXml;
 use mime::Mime;
 use quick_xml::events::{attributes::Attributes, Event};
 use quick_xml::Reader;
 use std::io::BufRead;
 use std::str::FromStr;
-use crate::util::*;
 
 // TODO: Get rid of the options... currently, they are only there to get Default
 #[derive(Default, Debug)]
 pub struct File {
-    name: String,
-    uuid: String,
-    request_time: Option<TimeStamp>,
+    pub name: String,
+    pub uuid: String,
+    pub request_time: Option<TimeStamp>,
     //path: Option<String>, // not present in folder
-    abspath: Option<String>, // not present in folder
-    revision: usize,
-    state: Option<TransferState>,
-    created: Option<TimeStamp>,
-    modified: Option<TimeStamp>,
-    mime: Option<Mime>,
-    size: usize,
-    md5: String,
-    updated: Option<TimeStamp>,
+    pub abspath: Option<String>, // not present in folder
+    pub revision: usize,
+    pub state: Option<TransferState>,
+    pub created: Option<TimeStamp>,
+    pub modified: Option<TimeStamp>,
+    pub mime: Option<Mime>,
+    pub size: usize,
+    pub md5: String,
+    pub updated: Option<TimeStamp>,
 }
 
 impl FromXml for File {
+    const TAG: &'static str = "file";
+
     fn from_xml<R: BufRead>(reader: &mut Reader<R>, attrs: Attributes) -> Result<Self, Error> {
         use failure::err_msg;
         use std::str::from_utf8;
@@ -52,6 +54,9 @@ impl FromXml for File {
                         b"abspath" => file.abspath = element_text(reader)?,
                         b"path" => (),            // same as abspath, hence ignore
                         b"currentRevision" => (), // ignore begin of revision tag
+                        b"revisions" => {
+                            break;
+                        } // TODO: this will fail, if they ever change order.
                         b"latestRevision" => (),  // same for incomplete file
                         b"number" => {
                             file.revision = element_usize(reader)?
@@ -73,17 +78,20 @@ impl FromXml for File {
                         n => {
                             return Err(JfsXmlError::UnexpectedTag {
                                 tag: from_utf8(n)?.to_owned(),
-                            }.into())
+                            }
+                            .into());
                         }
                     }
                 }
-                Event::End(element) => if element.name() != b"file" {
-                    debug!("Closing element {}, continue", from_utf8(element.name())?);
-                    continue;
-                } else {
-                    debug!("Closing element file, we're done here.");
-                    break;
-                },
+                Event::End(element) => {
+                    if element.name() != b"file" {
+                        debug!("Closing element {}, continue", from_utf8(element.name())?);
+                        continue;
+                    } else {
+                        debug!("Closing element file, we're done here.");
+                        break;
+                    }
+                }
                 Event::Eof => return Err(JfsXmlError::UnexpectedEndOfFile.into()),
                 _ => {}
             }
@@ -95,56 +103,46 @@ impl FromXml for File {
     }
 }
 
-impl FromStr for File {
-    type Err = Error;
-
-    #[inline]
-    fn from_str(s: &str) -> Result<File, Error> {
-        use std::str::from_utf8;
-
-        let mut buf = Vec::new();
-        let mut reader = Reader::from_str(s);
-        reader.trim_text(true).expand_empty_elements(true);
-
-        loop {
-            match reader.read_event(&mut buf)? {
-                Event::Start(element) => if element.name() == b"file" {
-                    debug!("Found file tag with attrib, parsing file");
-                    debug!(
-                        "attributes values: {:?}",
-                        element
-                            .attributes()
-                            .map(|a| from_utf8(&a.unwrap().value).unwrap().to_owned())
-                            .collect::<Vec<_>>()
-                    );
-                    return File::from_xml(&mut reader, element.attributes());
-                } else {
-                    debug!("Some other tag, will continue");
-                    continue;
-                },
-                Event::End(_) => return Err(JfsXmlError::UnexpectedEndOfFile.into()),
-                Event::Eof => return Err(JfsXmlError::UnexpectedEndOfFile.into()),
-                _ => {}
-            }
-        }
-    }
-}
+impl_from_str!(File);
 
 #[test]
 fn test_from_str() {
     let _file = r#"
-    <file name="113da8b2b96edce1fce7429b6214a042cf0457383c1d96fe7da82e4ca94977a5" uuid="8eaf0a81-4877-40e0-be97-ed73ffc9621d" time="2018-05-20-T08:20:47Z" host="dn-132">
-        <path xml:space="preserve">/oleidinger/Jotta/Sync/test123/data</path>
-        <abspath xml:space="preserve">/oleidinger/Jotta/Sync/test123/data</abspath>
-        <currentRevision>
-            <number>1</number>
-            <state>COMPLETED</state>
-            <created>2018-05-19-T00:18:37Z</created>
-            <modified>2018-05-19-T00:18:37Z</modified>
-            <mime>application/octet-stream</mime>
-            <size>27613</size>
-            <md5>c392f4b2819e8777d310f235a4535acc</md5>
-            <updated>2018-05-19-T00:18:37Z</updated>
-        </currentRevision>
-    </file>"#.parse::<File>().unwrap();
+<file name="blupp.dat" uuid="1502fdd0-c24e-4acc-984a-7d1e05059ccd" time="2019-01-20-T10:03:54Z" host="Backup2-backup2-get-oldgluster-dp1-2">
+  <path xml:space="preserve">/oleidinger/Jotta/Sync/test</path>
+  <abspath xml:space="preserve">/oleidinger/Jotta/Sync/test</abspath>
+  <currentRevision>
+    <number>3</number>
+    <state>COMPLETED</state>
+    <created>2019-01-20-T10:01:03Z</created>
+    <modified>2019-01-20-T10:01:03Z</modified>
+    <mime>application/octet-stream</mime>
+    <size>10</size>
+    <md5>5c372a32c9ae748a4c040ebadc51a829</md5>
+    <updated>2019-01-20-T10:01:03Z</updated>
+  </currentRevision>
+  <revisions>
+    <revision>
+      <number>2</number>
+      <state>COMPLETED</state>
+      <created>2019-01-20-T07:47:19Z</created>
+      <modified>2019-01-20-T07:47:19Z</modified>
+      <mime>application/octet-stream</mime>
+      <size>10</size>
+      <md5>5c372a32c9ae748a4c040ebadc51a829</md5>
+      <updated>2019-01-20-T07:47:19Z</updated>
+    </revision>
+    <revision>
+      <number>1</number>
+      <state>COMPLETED</state>
+      <created>2019-01-20-T07:19:52Z</created>
+      <modified>2019-01-20-T07:19:52Z</modified>
+      <mime>application/octet-stream</mime>
+      <size>10</size>
+      <md5>5c372a32c9ae748a4c040ebadc51a829</md5>
+      <updated>2019-01-20-T07:19:52Z</updated>
+    </revision>
+  </revisions>
+</file>
+"#.parse::<File>().unwrap();
 }

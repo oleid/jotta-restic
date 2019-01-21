@@ -1,8 +1,8 @@
+use crate::error::JfsXmlError;
+use crate::fromxml::FromXml;
 use chrono::ParseError as ChronoParseError;
 use chrono::{format, format::Item, DateTime, Utc};
-use crate::error::JfsXmlError;
 use failure::Error;
-use crate::fromxml::FromXml;
 use mime::Mime;
 use quick_xml::events::Event;
 use quick_xml::Reader;
@@ -154,13 +154,15 @@ pub fn parse_list<R: BufRead, E: FromXml>(
                 debug!("New element: {}", from_utf8(element.name())?);
                 vec.push(E::from_xml(reader, element.attributes())?);
             }
-            Event::End(element) => if element.name() != tag_name {
-                debug!("Closing element {}, continue", from_utf8(element.name())?);
-                continue;
-            } else {
-                debug!("Closing element, we're done here.");
-                break;
-            },
+            Event::End(element) => {
+                if element.name() != tag_name {
+                    debug!("Closing element {}, continue", from_utf8(element.name())?);
+                    continue;
+                } else {
+                    debug!("Closing element, we're done here.");
+                    break;
+                }
+            }
             Event::Eof => return Err(JfsXmlError::UnexpectedEndOfFile.into()),
             _ => {}
         }
