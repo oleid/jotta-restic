@@ -11,7 +11,7 @@ use std::str::FromStr;
 
 pub type TimeStamp = DateTime<Utc>;
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub enum TransferState {
     Incomplete,
     Completed,

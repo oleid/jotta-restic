@@ -88,9 +88,22 @@ mod restic {
         req.state()
             .backend
             .query_object(path)
-            .and_then(|obj| match obj {
-                Object::File(f) => ok(HttpResponse::Ok().content_length(f.size as u64).finish()),
-                Object::Folder(_) => ok(HttpResponse::Ok().finish()),
+            .and_then(|obj| {
+                ok(obj
+                    .deleted()
+                    .map(|when| {
+                        debug!("Only exists in trash; deleted at {}", when);
+                        HttpResponse::NotFound().finish()
+                    })
+                    .unwrap_or_else(|| {
+                        debug!("This object exists: {:?}", obj);
+                        match obj {
+                            Object::File(f) => {
+                                HttpResponse::Ok().content_length(f.size as u64).finish()
+                            }
+                            Object::Folder(_) => HttpResponse::Ok().finish(),
+                        }
+                    }))
             })
             .or_else(|error: failure::Error| {
                 error
@@ -149,26 +162,30 @@ mod restic {
     pub fn download(
         req: &HttpRequest<AppState>,
     ) -> impl Future<Item = HttpResponse, Error = actix_web::Error> {
-        info!("Download request {:?}", req);
-
-        //TODO: partial read
         let path = req.path();
 
-        req.state().backend.download(path).then(|res| match res {
-            Ok(b) => Ok(HttpResponse::Ok()
-                .content_type("binary/octet-stream")
-                .body(b)),
-            Err(error) => error
-                // Forward Jotta's error codes (such as 404) to our server
-                .find_root_cause()
-                .downcast_ref::<JottaError>()
-                .map(|ref e| {
-                    Ok(HttpResponse::new(
-                        StatusCode::from_u16(e.code as u16).unwrap(),
-                    ))
-                })
-                .unwrap_or(Err(error))
-                .map_err(Error::from),
+        info!("Download request {}", path);
+
+        //TODO: partial read
+
+        req.state().backend.download(path).then(|res| {
+            debug!("Response for download request: {:?}", res);
+            match res {
+                Ok(b) => Ok(HttpResponse::Ok()
+                    .content_type("binary/octet-stream")
+                    .body(b)),
+                Err(error) => error
+                    // Forward Jotta's error codes (such as 404) to our server
+                    .find_root_cause()
+                    .downcast_ref::<JottaError>()
+                    .map(|ref e| {
+                        Ok(HttpResponse::new(
+                            StatusCode::from_u16(e.code as u16).unwrap(),
+                        ))
+                    })
+                    .unwrap_or(Err(error))
+                    .map_err(Error::from),
+            }
         }) // Needed for streaming response
     }
 
@@ -218,19 +235,33 @@ mod restic {
         info!("listing of {}", path);
 
         let build_answer = |dir: JottaFolder| -> Vec<DirListEntry> {
-            dir.files.into_iter().map(DirListEntry::from).collect()
+            if dir.deleted.is_none() {
+                dir.files
+                    .into_iter()
+                    .filter_map(|file| match file.deleted {
+                        Some(_) => None,
+                        None => Some(DirListEntry::from(file)),
+                    })
+                    .collect()
+            } else {
+                Vec::new()
+            }
         };
 
         req.state()
             .backend
             .query_object(path)
-            .and_then(move |obj| match obj {
-                Object::Folder(dir) => ok(HttpResponse::Ok()
-                    .content_type("application/vnd.x.restic.rest.v2")
-                    .json(build_answer(dir))),
-                Object::File(_) => ok(HttpResponse::MethodNotAllowed()
-                    .reason("Not a directory")
-                    .finish()),
+            .and_then(move |obj| {
+                debug!("The following was returned:\n{:?}", obj);
+
+                match obj {
+                    Object::Folder(dir) => ok(HttpResponse::Ok()
+                        .content_type("application/vnd.x.restic.rest.v2")
+                        .json(build_answer(dir))),
+                    Object::File(_) => ok(HttpResponse::MethodNotAllowed()
+                        .reason("Not a directory")
+                        .finish()),
+                }
             })
             .map_err(Error::from)
     }

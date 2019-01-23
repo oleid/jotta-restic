@@ -5,6 +5,9 @@ extern crate failure;
 extern crate log;
 
 #[macro_use]
+extern crate serde_derive;
+
+#[macro_use]
 mod fromxml;
 
 mod error;

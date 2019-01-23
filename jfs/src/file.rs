@@ -9,7 +9,7 @@ use std::io::BufRead;
 use std::str::FromStr;
 
 // TODO: Get rid of the options... currently, they are only there to get Default
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Serialize)]
 pub struct File {
     pub name: String,
     pub uuid: String,
@@ -19,7 +19,9 @@ pub struct File {
     pub revision: usize,
     pub state: Option<TransferState>,
     pub created: Option<TimeStamp>,
+    pub deleted: Option<TimeStamp>,
     pub modified: Option<TimeStamp>,
+    #[serde(skip_serializing)]
     pub mime: Option<Mime>,
     pub size: usize,
     pub md5: String,
@@ -42,6 +44,7 @@ impl FromXml for File {
                 b"name" => file.name = from_utf8(&a.value)?.to_owned(),
                 b"uuid" => file.uuid = from_utf8(&a.value)?.to_owned(),
                 b"time" => file.request_time = Some(parse_jotta_timestamp(from_utf8(&a.value)?)?),
+                b"deleted" => file.deleted = Some(parse_jotta_timestamp(from_utf8(&a.value)?)?),
                 b"host" => (), // ignored
                 _ => debug!("Unhandled attribute {:?}", from_utf8(&a.value)),
             }

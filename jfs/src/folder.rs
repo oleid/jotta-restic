@@ -8,7 +8,7 @@ use quick_xml::Reader;
 use std::io::BufRead;
 use std::str::FromStr;
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Serialize)]
 pub struct Folder {
     pub name: String,
     pub request_time: Option<TimeStamp>,
